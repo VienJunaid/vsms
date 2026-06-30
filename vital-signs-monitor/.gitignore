@@ -1,0 +1,7 @@
+/target
+**/target
+Cargo.lock.bak
+logs/*.log
+!logs/.gitkeep
+*.sock
+.DS_Store
