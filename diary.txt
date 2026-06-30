@@ -1,0 +1,16 @@
+Documentation Notes:
+
+First started writing code in the protocol encode/decode.
+- This is where the control-core and ui-dashboard depend on this
+- in order to communicatea dn work together
+- Self contained, no dependencies
+
+
+Task lists in the README.md 
+
+lib.rs
+- start off by working on determining lens for the different structs 
+- then started working on match keyboards for comparing values 
+- Next Task: Work on encode and decode functions for each structs
+
+
