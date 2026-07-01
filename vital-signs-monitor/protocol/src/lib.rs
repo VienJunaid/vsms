@@ -51,7 +51,7 @@ impl FrameType {
     /// byte and `_ => None` for anything else. This is the inverse of the
     /// `as u8` cast you'd use to go the other direction.
     pub fn from_u8(b: u8) -> Option<Self> {
-        todo!("match b against each FrameType's wire value, return None for unknown bytes")
+        
         match b {
             0x01 => Some(FrameType::VitalsSample), 
             0x02 => Some(FrameType::AlarmState),
@@ -82,12 +82,12 @@ impl AlarmLevel {
     /// safe to Critical? Think about which default is actually safer for a
     /// monitor, then justify your choice in a comment.
     pub fn from_u8(b: u8) -> Self {
-        todo!("match b -> AlarmLevel, with a sensible default for unknown values")
+        
         match b {
-            0 => Normal,
-            1 => Warning,
-            2 => Critical,
-            _ => Critical, // If you were to receive Junk Data, you should immediate check up on the patient and fix it
+            0 => AlarmLevel::Normal,
+            1 => AlarmLevel::Warning,
+            2 => AlarmLevel::Critical,
+            _ => AlarmLevel::Critical, // If you were to receive Junk Data, you should immediate check up on the patient and fix it
         }
     }
 }
@@ -123,15 +123,17 @@ impl VitalsSample {
     /// Each numeric type has a `.to_le_bytes()` method that returns a
     /// fixed-size array — that's what you're copying in.
     pub fn encode(&self) -> [u8; Self::ENCODED_LEN] {
-        //todo!("write each field's to_le_bytes() into the right slice of buf")
+        
         let mut buf = [0u8;Self::ENCODED_LEN];
         buf[0..4].copy_from_slice(&self.timestamp_ms.to_le_bytes());
-        buf[5..6].copy_from_slice(&self.heart_rate_bpm.to_le_bytes());
-        buf[7..8].copy_from_slice(&self.spo2_permille.to_le_bytes());
-        buf[9..10].copy_from_slice(&self.temp_centi_c.to_le_bytes());
-        buf[11..12].copy_from_slice(&self.ecg_sample_mv100.to_le_bytes());
+        buf[4..6].copy_from_slice(&self.heart_rate_bpm.to_le_bytes());
+        buf[6..8].copy_from_slice(&self.spo2_permille.to_le_bytes());
+        buf[8..10].copy_from_slice(&self.temp_centi_c.to_le_bytes());
+        buf[10..12].copy_from_slice(&self.ecg_sample_mv100.to_le_bytes());
         return buf;
     }
+
+    
 
 
     /// Deserialize from a byte slice. Returns None if too short.
@@ -140,17 +142,23 @@ impl VitalsSample {
     /// is the pattern for each field. The `?` on `try_into().ok()?` is what
     /// lets you bail out with `None` if a slice conversion ever fails.
     pub fn decode(buf: &[u8]) -> Option<Self> {
-        //todo!("check buf.len() >= ENCODED_LEN, then from_le_bytes() each field back out")
+
+        let timestamp_ms : u32;
+        let heart_rate_bpm : u16;
+        let spo2_permille : u16;
+        let temp_centi_c : u16;
+        let ecg_sample_mv100 : i16;
+
         if buf.len() >= Self::ENCODED_LEN {
-            let d1 = u32::from_le_bytes(buf[0..4].try_into().ok()?);
-            let d2 = u16::from_le_bytes(buf[5..6].try_into().ok()?);
-            let d3 = u16::from_le_bytes(buf[7..8].try_into().ok()?);
-            let d4 = u16::from_le_bytes(buf[9..10].try_into().ok()?);
-            let d6 = u16::from_le_bytes(buf[11..12].try_into().ok()?);
+            timestamp_ms = u32::from_le_bytes(buf[0..4].try_into().ok()?);
+            heart_rate_bpm = u16::from_le_bytes(buf[4..6].try_into().ok()?);
+            spo2_permille = u16::from_le_bytes(buf[6..8].try_into().ok()?);
+            temp_centi_c = u16::from_le_bytes(buf[8..10].try_into().ok()?);
+            ecg_sample_mv100 = i16::from_le_bytes(buf[10..12].try_into().ok()?);
         } else {
             return None; 
         }
-        return Some(Self {d1, d2, d3, d4, d5, d6});
+        return Some(Self {timestamp_ms, heart_rate_bpm, spo2_permille, temp_centi_c, ecg_sample_mv100});
     }
 }
 
@@ -171,27 +179,28 @@ impl AlarmEvent {
     /// Serialize into a fixed-size byte buffer.
     pub fn encode(&self) -> [u8; Self::ENCODED_LEN] {
         // HINT: `self.level as u8` converts the enum to its wire byte.
-        todo!()
-
-        let mut buf = [0u8;Self;ENCODED_LEN];
+        let mut buf = [0u8;Self::ENCODED_LEN];
         buf[0..4].copy_from_slice(&self.timestamp_ms.to_le_bytes());
-        buf[5].copy_from_slice(&self.level.to_le_bytes());
-        buf[6].copy_from_slice(&self.source_vital.to_le_bytes());
+        buf[4] = self.level as u8;
+        buf[5] = self.source_vital;
+        return buf; 
     }
 
     /// Deserialize from a byte slice. Returns None if too short.
     pub fn decode(buf: &[u8]) -> Option<Self> {
         // HINT: use AlarmLevel::from_u8(buf[4]) for the level field.
-        todo!()
+        let timestamp_ms : u32;
+        let level : AlarmLevel;
+        let source_vital : u8;
         if buf.len() >= Self::ENCODED_LEN {
-            let d1 = u32::from_le_bytes(buf[0..4].try_into().ok()?);
-            let d2 = AlarmLevel::from_u8(buf[5]);
-            let d3 = u8::from_le_bytes(buf[6].try_into().ok?);
+            timestamp_ms = u32::from_le_bytes(buf[0..4].try_into().ok()?);
+            level = AlarmLevel::from_u8(buf[4]);
+            source_vital = u8::from(buf[5]).try_into().ok()?;
             
         } else {
             return None; 
         }
-        return Some(Self {d1, d2, d3}); 
+        return Some(Self {timestamp_ms, level, source_vital}); 
     }
 }
 
@@ -215,27 +224,35 @@ impl ConfigUpdate {
 
     /// Serialize into a fixed-size byte buffer.
     pub fn encode(&self) -> [u8; Self::ENCODED_LEN] {
-        let mut buf = [u8; Self::ENCODED_LEN];
+        let mut buf = [0u8; Self::ENCODED_LEN];
         buf[0..2].copy_from_slice(&self.hr_low.to_le_bytes());
-        buf[3..4].copy_from_slice(&self.hr_high.to_le_bytes());
-        buf[5..6].copy_from_slice(&self.spo2_low_permille.to_le_bytes());
-        buf[7..8].copy_from_slice(&self.temp_low_centi_c.to_le_bytes());
-        buf[9..10].copy_from_slice(&self.temp_high_centi_c.to_le_bytes());
-        todo!()
+        buf[2..4].copy_from_slice(&self.hr_high.to_le_bytes());
+        buf[4..6].copy_from_slice(&self.spo2_low_permille.to_le_bytes());
+        buf[6..8].copy_from_slice(&self.temp_low_centi_c.to_le_bytes());
+        buf[8..10].copy_from_slice(&self.temp_high_centi_c.to_le_bytes());
+        return buf; 
     }
 
     /// Deserialize from a byte slice. Returns None if too short.
     pub fn decode(buf: &[u8]) -> Option<Self> {
-        //todo!()
+        let hr_low : u16;
+        let hr_high : u16;
+        let spo2_low_permille : u16;
+        let temp_low_centi_c : u16;
+        let temp_high_centi_c: u16;
+
+        
         if buf.len() >= Self::ENCODED_LEN {
-            let d1 = u16::from_le_bytes(buf[0..2].try_into().ok()?);
-            let d2 = u16::from_le_bytes(buf[3..4].try_into().ok()?);
-            let d3 = u16::from_le_bytes(buf[5..6].try_into().ok()?);
-            let d4 = u16::from_le_bytes(buf[7..8].try_into().ok()?);
-            let d5 = u16::from_le_bytes(buf[9..10].try_into().ok()?);
+            hr_low = u16::from_le_bytes(buf[0..2].try_into().ok()?);
+            hr_high = u16::from_le_bytes(buf[2..4].try_into().ok()?);
+            spo2_low_permille = u16::from_le_bytes(buf[4..6].try_into().ok()?);
+            temp_low_centi_c = u16::from_le_bytes(buf[6..8].try_into().ok()?);
+            temp_high_centi_c = u16::from_le_bytes(buf[8..10].try_into().ok()?);
         } else {
             return None; 
         }
+        
+        return Some(Self { hr_low, hr_high, spo2_low_permille, temp_low_centi_c, temp_high_centi_c})
     }
 }
 
@@ -246,7 +263,7 @@ impl ConfigUpdate {
 /// `frame_type ^ len_bytes[0] ^ len_bytes[1]`, then XOR every payload byte
 /// into that running value in a loop (`for b in payload { sum ^= b; }`).
 fn checksum(frame_type: u8, len_bytes: [u8; 2], payload: &[u8]) -> u8 {
-    todo!()
+   
 }
 
 /// Encode a complete frame (start byte, type, length, payload, checksum) into `out`.
@@ -256,7 +273,7 @@ fn checksum(frame_type: u8, len_bytes: [u8; 2], payload: &[u8]) -> u8 {
 /// HINT: total frame length = 1 (start) + 1 (type) + 2 (len) + payload.len() + 1 (checksum).
 /// Check that against MAX_PAYLOAD and out.len() *before* writing anything.
 pub fn encode_frame(frame_type: FrameType, payload: &[u8], out: &mut [u8]) -> Option<usize> {
-    todo!("write START_BYTE, type, len (as_le_bytes), payload, then checksum(...) into out")
+    
 }
 
 /// Result of attempting to decode a frame from a buffer.
@@ -303,7 +320,7 @@ pub enum DecodeResult<'a> {
 /// 7. convert the type byte via `FrameType::from_u8` -> Invalid on None
 /// 8. otherwise return `Frame { frame_type, payload, consumed: total_len }`
 pub fn decode_frame(buf: &[u8]) -> DecodeResult<'_> {
-    todo!()
+    
 }
 
 #[cfg(test)]
@@ -316,7 +333,7 @@ mod tests {
     // math is correct.
     #[test]
     fn roundtrip_vitals_sample() {
-        todo!()
+        
     }
 
     // TODO: write a test that calls encode_frame(...) then decode_frame(...)
@@ -324,7 +341,7 @@ mod tests {
     // right frame_type, payload, and consumed length.
     #[test]
     fn roundtrip_full_frame() {
-        todo!()
+        
     }
 
     // TODO: encode a frame, then flip a bit in its checksum byte, and assert
@@ -332,7 +349,7 @@ mod tests {
     // your checksum actually catches corruption instead of being decorative.
     #[test]
     fn detects_corrupted_checksum() {
-        todo!()
+    
     }
 
     // TODO: encode a frame, then call decode_frame on a slice that's missing
@@ -340,6 +357,6 @@ mod tests {
     // This distinction matters for a caller reading off a real socket.
     #[test]
     fn incomplete_buffer_requests_more_data() {
-        todo!()
+    
     }
 }
