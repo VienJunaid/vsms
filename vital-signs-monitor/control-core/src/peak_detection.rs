@@ -66,6 +66,8 @@ impl PeakDetector {
     /// and reset both counters for the next window.
     pub fn feed_sample(&mut self, sample_mv: f32) -> bool {
         let mut is_peak = false; 
+        //if this sample peak is greater than threshold and the sample size is past the refractory sample size 
+        // then its a detected peak 
         if sample_mv >= self.threshold_mv && self.samples_since_last_peak >= self.refractory_samples {
             self.samples_since_last_peak = 0;
             self.beats_in_window += 1;
@@ -73,7 +75,7 @@ impl PeakDetector {
         }
         self.samples_since_last_peak += 1;
         self.window_progress += 1;
-        if self.window_progress >= ECG_SAMPLE_RATE_HZ * 3 {
+        if self.window_progress >= ECG_SAMPLE_RATE_HZ * 3 { // if 3 seconds has already passed add that to the BPM equation - 750 samples
             self.current_bpm = (self.beats_in_window as f32 / (3.0 / 60.0)).round() as u16;
             self.beats_in_window = 0;
             self.window_progress = 0; 
