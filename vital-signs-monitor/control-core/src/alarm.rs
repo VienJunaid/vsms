@@ -13,6 +13,12 @@
 
 use protocol::AlarmLevel;
 
+// Number Scalling
+// Heart Rate - 50 == 50 
+// SpO2 - 920 = 92.0 %
+// Temperature - 3600 == 36.00 C 
+
+
 /// Configurable thresholds for each monitored vital.
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
@@ -44,7 +50,28 @@ impl Default for Thresholds {
     /// critical <88.0%. Temp warning 36.0-38.5C, critical 35.0-39.5C.
     /// Remember the *_permille / *_centi_c fixed-point scaling from protocol.rs!
     fn default() -> Self {
-        todo!()
+        let hr_warning_low = 50;
+        let hr_warning_high = 110;
+        let hr_critical_low = 40;
+        let hr_critical_high = 140;
+        let spo2_warning_low = 920;  
+        let spo2_critical_low = 880;
+        let temp_warning_low = 3600;
+        let temp_warning_high = 3850;
+        let temp_critical_low = 3500;
+        let temp_critical_high = 3950; 
+        return Self { 
+            hr_warning_low, 
+            hr_warning_high, 
+            hr_critical_low, 
+            hr_critical_high,
+            spo2_warning_low,
+            spo2_critical_low,
+            temp_warning_low,
+            temp_warning_high,
+            temp_critical_low,
+            temp_critical_high,
+        }
     }
 }
 
@@ -66,7 +93,12 @@ impl VitalSource {
     /// HINT: match each variant to the byte values used in AlarmEvent's docs
     /// (0=HR, 1=SpO2, 2=Temp, 255=cleared/none).
     pub fn to_wire_byte(self) -> u8 {
-        todo!()
+        match self {
+            VitalSource::HeartRate => 0,
+            VitalSource::SpO2 => 1,
+            VitalSource::Temperature => 2,
+            VitalSource::None => 255,
+        }
     }
 }
 
@@ -80,17 +112,28 @@ pub struct AlarmStateMachine {
     //   level than the current confirmed one (the "downgrade streak")
     // - how many consecutive lower-readings are required before you actually
     //   downgrade (the hysteresis window, passed in at construction)
+    thresholds: Thresholds,
+    current_level: AlarmLevel,
+    current_source: VitalSource,
+    downgrade_streak: u32,
+    downgrade_hysteresis: u32, 
 }
 
 impl AlarmStateMachine {
     /// Create a new state machine with the given thresholds and hysteresis window.
     pub fn new(thresholds: Thresholds, downgrade_hysteresis: u32) -> Self {
-        todo!()
+        return Self {
+            thresholds,
+            current_level: AlarmLevel::Normal,
+            current_source: VitalSource::None,
+            downgrade_streak: 0,
+            downgrade_hysteresis,
+        }
     }
 
     /// Replace the active thresholds (e.g. from a UI ConfigUpdate frame).
     pub fn set_thresholds(&mut self, thresholds: Thresholds) {
-        todo!()
+        self.thresholds = thresholds;
     }
 
     /// Evaluate one sample of vitals. Returns `Some((level, source))` if the
@@ -117,7 +160,27 @@ impl AlarmStateMachine {
         spo2_permille: u16,
         temp_centi_c: u16,
     ) -> Option<(AlarmLevel, VitalSource)> {
-        todo!()
+        let (computed_level, computed_source) = self.compute_level(heart_rate_bpm, spo2_permille, temp_centi_c);
+        
+        if computed_level as u8 > self.current_level as u8 {
+            self.current_level = computed_level;
+            self.current_source = computed_source;
+            self.downgrade_streak = 0;
+            return Some((self.current_level, self.current_source));
+
+        } else if ((computed_level as u8) < (self.current_level as u8)) {
+            self.downgrade_streak += 1;
+            if self.downgrade_streak >= self.downgrade_hysteresis {
+                // commit to downgrade here (update level/source, reset streak)
+                // return Some 
+                self.current_level = computed_level;
+                self.current_source = computed_source; 
+                self.downgrade_streak = 0;
+                return Some((self.current_level, self.current_source));
+            }
+        } 
+        return None; 
+
     }
 
     /// Pure function: given a vitals sample and the current thresholds, what
@@ -129,7 +192,30 @@ impl AlarmStateMachine {
     /// band, then each vital's warning band — return as soon as you find a
     /// match rather than checking everything every time.
     fn compute_level(&self, hr: u16, spo2: u16, temp: u16) -> (AlarmLevel, VitalSource) {
-        todo!()
+        if hr < self.thresholds.hr_critical_low || hr > self.thresholds.hr_critical_high {
+            return (AlarmLevel::Critical, VitalSource::HeartRate);
+        }
+
+        if spo2 < self.thresholds.spo2_critical_low {
+            return (AlarmLevel::Critical, VitalSource::SpO2);
+        }
+
+        if temp < self.thresholds.temp_critical_low || temp > self.thresholds.temp_critical_high {
+            return (AlarmLevel::Critical, VitalSource::Temperature);
+        }
+
+        if hr < self.thresholds.hr_warning_low || hr > self.thresholds.hr_warning_high {
+            return (AlarmLevel::Warning, VitalSource::HeartRate);
+        }
+
+        if spo2 < self.thresholds.spo2_warning_low {
+            return (AlarmLevel::Warning, VitalSource::SpO2);
+        }
+
+        if temp < self.thresholds.temp_warning_low || temp > self.thresholds.temp_warning_high {
+            return (AlarmLevel::Warning, VitalSource::Temperature);
+        }
+        return (AlarmLevel::Normal, VitalSource::None);
     }
 }
 
@@ -143,7 +229,9 @@ mod tests {
     // very first call — escalation should never be delayed.
     #[test]
     fn escalates_immediately_on_critical_heart_rate() {
-        todo!()
+        let mut critical_state = AlarmStateMachine::new(Thresholds::default(), 3);
+        let result = critical_state.evaluate(20, 950, 3700);
+        assert_eq!(result, Some((AlarmLevel::Critical, VitalSource::HeartRate)));
     }
 
     // TODO: trigger a critical alarm, then feed several consecutive *normal*
@@ -153,7 +241,11 @@ mod tests {
     // get Some((AlarmLevel::Normal, VitalSource::None)).
     #[test]
     fn does_not_downgrade_until_hysteresis_satisfied() {
-        todo!()
+        let mut critical_state = AlarmStateMachine::new(Thresholds::default(), 3);
+        critical_state.evaluate(20, 950, 3700); // triggering conflict
+        assert_eq!(critical_state.evaluate(75, 950, 3700), None);
+        assert_eq!(critical_state.evaluate(75, 950, 3700), None);
+        assert_eq!(critical_state.evaluate(75, 950, 3700), Some((AlarmLevel::Normal, VitalSource::None)));
     }
 
     // TODO: feed two different but both-Normal readings in a row and assert
@@ -161,6 +253,8 @@ mod tests {
     // the level genuinely hasn't moved.
     #[test]
     fn no_change_event_when_level_is_stable() {
-        todo!()
+        let mut critical_state = AlarmStateMachine::new(Thresholds::default(), 3);
+        assert_eq!(critical_state.evaluate(75, 950, 3700), None);
+        assert_eq!(critical_state.evaluate(80, 950, 3700), None); 
     }
 }
