@@ -22,20 +22,20 @@ pub struct EcgGenerator {
     pub target_bpm: f32,
     // TODO: add the fields you need to track progress through a beat cycle,
     // e.g. a `phase: f32` counter and a precomputed `samples_per_beat: f32`.
-    samples_per_beat: f32;
-    return Self { target_bpm, phase: 0.0, samples_per_beat };
+    samples_per_beat: f32,
+    phase: f32,
 }
 
 impl EcgGenerator {
     /// Create a new generator at a given starting heart rate.
     pub fn new(target_bpm: f32) -> Self {
-        let computed_sample = (60.0 / target_bpm) * ECG_SAMPLE_RATE_HZ as f32;
-        return Self{computed_sample};
+        let samples_per_beat = (60.0 / target_bpm) * ECG_SAMPLE_RATE_HZ as f32;
+        return Self{samples_per_beat, phase: 0.0};
     }
 
     /// Update the target heart rate (e.g. from a "scenario" driving abnormal states).
     pub fn set_target_bpm(&mut self, bpm: f32) {
-        todo!("update target_bpm and recompute samples_per_beat")
+   
         self.target_bpm = bpm;
         self.samples_per_beat = (60.0 / bpm) * ECG_SAMPLE_RATE_HZ as f32;
     }
@@ -51,15 +51,13 @@ impl EcgGenerator {
     /// fraction-of-cycle-complete. Add a little `rng.gen_range(-0.02..0.02)`
     /// noise on top so it doesn't look perfectly synthetic.
     pub fn next_sample(&mut self, rng: &mut impl Rng) -> f32 {
-        todo!("increment phase (wrapping at samples_per_beat), compute the QRS+T-wave shape, add noise")
         self.phase += 1.0;
         if self.phase >= self.samples_per_beat {
             self.phase = 0.0;
         }
 
         let x = self.phase / self.samples_per_beat;
-        let qrs = 0.(-((x - c).powi(2)) / (2.0 * w * w)).exp();
-        let c = 0.015;
+        let qrs = (-((x - 0.06).powi(2)) / (2.0 * 0.015 * 0.015)).exp();
         let t_wave = 0.3 * (-((x - 0.28).powi(2)) / (2.0 * 0.05 * 0.05)).exp();
         let gaussian_bump: f32 = qrs + t_wave + rng.gen_range(-0.02..0.02);
         return gaussian_bump;
