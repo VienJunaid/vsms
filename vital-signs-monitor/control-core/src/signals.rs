@@ -30,7 +30,7 @@ impl EcgGenerator {
     /// Create a new generator at a given starting heart rate.
     pub fn new(target_bpm: f32) -> Self {
         let samples_per_beat = (60.0 / target_bpm) * ECG_SAMPLE_RATE_HZ as f32;
-        return Self{samples_per_beat, phase: 0.0};
+        return Self{target_bpm, samples_per_beat, phase: 0.0};
     }
 
     /// Update the target heart rate (e.g. from a "scenario" driving abnormal states).
@@ -72,12 +72,13 @@ impl EcgGenerator {
 /// off into nonsense.
 pub struct SpO2Generator {
     // TODO: track the current value, e.g. `current_permille: f32`.
+    current: f32,
 }
 
 impl SpO2Generator {
     /// Create a new generator starting at a healthy baseline.
     pub fn new(start_permille: f32) -> Self {
-        todo!()
+        return Self { current: start_permille };
     }
 
     /// Advance by one tick (intended to be called ~1x/sec) and return the
@@ -87,7 +88,9 @@ impl SpO2Generator {
     /// `self.current = (self.current + step).clamp(700.0, 1000.0);`
     /// then round and cast to u16.
     pub fn next_value(&mut self, rng: &mut impl Rng) -> u16 {
-        todo!()
+        let step: f32 = rng.gen_range(-2.0..2.0);
+        self.current = (self.current + step).clamp(700.0, 1000.0);
+        self.current.round() as u16
     }
 
     /// Force the value toward a target (used by scenario injection for demos/tests).
@@ -95,29 +98,32 @@ impl SpO2Generator {
     /// moves 10% of the remaining distance each call, which looks like a
     /// smooth transition rather than a jump if called repeatedly.
     pub fn nudge_toward(&mut self, target_permille: f32) {
-        todo!()
+        self.current += (target_permille - self.current) * 0.1;
     }
 }
 
 /// Generates a slow-drifting body temperature.
 pub struct TempGenerator {
     // TODO: same shape as SpO2Generator above.
+    current: f32,
 }
 
 impl TempGenerator {
     /// Create a new generator starting at a healthy baseline (e.g. 37.0C -> 3700 centi-C).
     pub fn new(start_centi_c: f32) -> Self {
-        todo!()
+        return Self {current: start_centi_c };
     }
 
     /// Advance by one tick (intended to be called ~1x/sec) and return the
     /// current value in degrees C * 100.
     pub fn next_value(&mut self, rng: &mut impl Rng) -> u16 {
-        todo!()
+        let step: f32 = rng.gen_range(-2.0..2.0);
+        self.current = (self.current + step).clamp(3500.0, 4200.0);
+        self.current.round() as u16
     }
 
     /// Force the value toward a target (used by scenario injection for demos/tests).
     pub fn nudge_toward(&mut self, target_centi_c: f32) {
-        todo!()
+        self.current += (target_centi_c - self.current) * 0.1;
     }
 }

@@ -33,28 +33,28 @@ Status legend: `[ ]` not started · `[~]` in progress / has bugs · `[x]` done
 
 ---
 
-## Milestone 1 — `control-core`: signal generators (`signals.rs`)
+## Milestone 1 — `control-core`: signal generators (`signals.rs`) ✅ COMPLETE
 
-- [ ] `EcgGenerator` struct fields (`phase`, `samples_per_beat`, etc.)
-- [ ] `EcgGenerator::new`
-- [ ] `EcgGenerator::set_target_bpm`
-- [ ] `EcgGenerator::next_sample` (QRS + T-wave Gaussian bumps + noise)
-- [ ] `SpO2Generator` struct + `new`
-- [ ] `SpO2Generator::next_value` (random walk, clamped)
-- [ ] `SpO2Generator::nudge_toward`
-- [ ] `TempGenerator` struct + `new`
-- [ ] `TempGenerator::next_value`
-- [ ] `TempGenerator::nudge_toward`
+- [x] `EcgGenerator` struct fields (`phase`, `samples_per_beat`, etc.)
+- [x] `EcgGenerator::new`
+- [x] `EcgGenerator::set_target_bpm`
+- [x] `EcgGenerator::next_sample` (QRS + T-wave Gaussian bumps + noise)
+- [x] `SpO2Generator` struct + `new`
+- [x] `SpO2Generator::next_value` (random walk, clamped)
+- [x] `SpO2Generator::nudge_toward`
+- [x] `TempGenerator` struct + `new`
+- [x] `TempGenerator::next_value`
+- [x] `TempGenerator::nudge_toward`
 
-## Milestone 2 — `control-core`: peak detection (`peak_detection.rs`)
+## Milestone 2 — `control-core`: peak detection (`peak_detection.rs`) ✅ COMPLETE
 
-- [ ] `PeakDetector` struct fields (threshold, refractory counter, window
+- [x] `PeakDetector` struct fields (threshold, refractory counter, window
       accumulator, last BPM)
-- [ ] `PeakDetector::new`
-- [ ] `PeakDetector::feed_sample` (threshold + refractory check, rolling
+- [x] `PeakDetector::new`
+- [x] `PeakDetector::feed_sample` (threshold + refractory check, rolling
       window → BPM conversion)
-- [ ] `PeakDetector::current_bpm`
-- [ ] Test: `detects_approximately_correct_bpm`
+- [x] `PeakDetector::current_bpm`
+- [x] Test: `detects_approximately_correct_bpm`
 
 **Depends on:** Milestone 1 (`EcgGenerator`) for the test.
 
