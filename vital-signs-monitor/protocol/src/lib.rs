@@ -263,8 +263,14 @@ impl ConfigUpdate {
 /// `frame_type ^ len_bytes[0] ^ len_bytes[1]`, then XOR every payload byte
 /// into that running value in a loop (`for b in payload { sum ^= b; }`).
 fn checksum(frame_type: u8, len_bytes: [u8; 2], payload: &[u8]) -> u8 {
-   
+    let mut sum = frame_type ^ len_bytes[0] ^ len_bytes[1];
+    for b in payload {
+        sum ^= b;
+    }
+    return sum; 
 }
+
+
 
 /// Encode a complete frame (start byte, type, length, payload, checksum) into `out`.
 /// Returns the number of bytes written, or None if the payload is too large
@@ -273,7 +279,19 @@ fn checksum(frame_type: u8, len_bytes: [u8; 2], payload: &[u8]) -> u8 {
 /// HINT: total frame length = 1 (start) + 1 (type) + 2 (len) + payload.len() + 1 (checksum).
 /// Check that against MAX_PAYLOAD and out.len() *before* writing anything.
 pub fn encode_frame(frame_type: FrameType, payload: &[u8], out: &mut [u8]) -> Option<usize> {
+    let total_len = 5 + payload.len();
+    if payload.len() > MAX_PAYLOAD {
+        return None;
+    }
+    out[0] = START_BYTE;
+    out[1] = frame_type as u8;
     
+    // Computing length bytes
+    let len_bytes = (payload.len() as u16).to_le_bytes();
+    out[2..4].copy_from_slice(&len_bytes);
+    out[4..4+payload.len()].copy_from_slice(payload);
+    out[4 + payload.len()] = checksum(frame_type as u8, len_bytes, payload);
+    return Some(total_len);
 }
 
 /// Result of attempting to decode a frame from a buffer.
@@ -320,8 +338,35 @@ pub enum DecodeResult<'a> {
 /// 7. convert the type byte via `FrameType::from_u8` -> Invalid on None
 /// 8. otherwise return `Frame { frame_type, payload, consumed: total_len }`
 pub fn decode_frame(buf: &[u8]) -> DecodeResult<'_> {
-    
-}
+    if buf.is_empty() {
+    return DecodeResult::Incomplete;
+    }
+    if buf[0] != START_BYTE {
+        return DecodeResult::Invalid { skip: 1 };
+    }
+    if buf.len() < 4 {
+        return DecodeResult::Incomplete;
+        
+    }
+    let len = u16::from_le_bytes(buf[2..4].try_into().unwrap()) as usize;
+    if len > MAX_PAYLOAD {
+        return DecodeResult::Invalid { skip: 1 };
+    }
+    let total_len = 4 + len + 1;
+    if buf.len() < total_len {
+        return DecodeResult::Incomplete;
+    }
+    let payload = &buf[4..4 + len];
+    let len_bytes = (len as u16).to_le_bytes();
+    let expected = checksum(buf[1], len_bytes, payload);
+    if buf[total_len - 1] != expected {
+        return DecodeResult::Invalid { skip: 1 };
+    }
+    match FrameType::from_u8(buf[1]) {
+        None => DecodeResult::Invalid { skip: 1 },
+        Some(frame_type) => DecodeResult::Frame { frame_type, payload, consumed: total_len },
+    }
+} 
 
 #[cfg(test)]
 mod tests {
@@ -333,7 +378,17 @@ mod tests {
     // math is correct.
     #[test]
     fn roundtrip_vitals_sample() {
-        
+        let original = VitalsSample {
+            timestamp_ms: 1000,
+            heart_rate_bpm: 72,
+            spo2_permille: 975,
+            temp_centi_c: 3712,
+            ecg_sample_mv100: -42,
+        };
+
+        let bytes = original.encode();
+        let decoded = VitalsSample::decode(&bytes).unwrap();
+        assert_eq!(original, decoded);
     }
 
     // TODO: write a test that calls encode_frame(...) then decode_frame(...)
@@ -341,6 +396,26 @@ mod tests {
     // right frame_type, payload, and consumed length.
     #[test]
     fn roundtrip_full_frame() {
+        let sample = VitalsSample {
+            timestamp_ms: 500,
+            heart_rate_bpm: 80,
+            spo2_permille: 900,
+            temp_centi_c: 3600,
+            ecg_sample_mv100: -42,
+        };
+
+        let payload = sample.encode();
+        let mut out = [0u8; 256];
+        let written = encode_frame(FrameType::VitalsSample, &payload, &mut out).unwrap();
+        match decode_frame(&out[..written]) {
+            DecodeResult::Frame { frame_type, payload: p, consumed } => {
+                assert_eq!(frame_type, FrameType::VitalsSample);
+                assert_eq!(p, &payload);
+                assert_eq!(consumed, written);
+            }
+            other => panic!("Expected frame, got {:?}", other),
+        }
+
         
     }
 
@@ -349,7 +424,11 @@ mod tests {
     // your checksum actually catches corruption instead of being decorative.
     #[test]
     fn detects_corrupted_checksum() {
-    
+        let payload = [1u8, 2, 3];
+        let mut out = [0u8; 256];
+        let written = encode_frame(FrameType::Ack, &payload, &mut out).unwrap();
+        out[written - 1] ^= 0xFF;
+        assert!(matches!(decode_frame(&out[..written]), DecodeResult::Invalid { ..}));
     }
 
     // TODO: encode a frame, then call decode_frame on a slice that's missing
@@ -357,6 +436,9 @@ mod tests {
     // This distinction matters for a caller reading off a real socket.
     #[test]
     fn incomplete_buffer_requests_more_data() {
-    
+        let payload = [9u8, 8, 7];
+        let mut out = [0u8; 256];
+        let written = encode_frame(FrameType::Ack, &payload, &mut out).unwrap();
+        assert!(matches!(decode_frame(&out[..written - 1]), DecodeResult::Incomplete));
     }
 }

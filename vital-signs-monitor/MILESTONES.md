@@ -9,59 +9,27 @@ Status legend: `[ ]` not started · `[~]` in progress / has bugs · `[x]` done
 
 ---
 
-## Milestone 0 — `protocol` crate (shared wire format)
+## Milestone 0 — `protocol` crate (shared wire format) ✅ COMPLETE
 
-This crate currently does **not compile**. Several functions have a
-`todo!()` followed by leftover draft code after it (which is dead/unreachable
-and also has bugs of its own). Both problems need fixing.
-
-- [~] `FrameType::from_u8` — draft match exists but is unreachable after
-      `todo!()`; remove the `todo!()` so the match is what executes.
-- [~] `AlarmLevel::from_u8` — same `todo!()` issue, **and** the match arms
-      reference bare `Normal`/`Warning`/`Critical` instead of
-      `AlarmLevel::Normal` etc. — won't compile until qualified.
-- [~] `VitalsSample::ENCODED_LEN` — currently `12`, which is correct
-      (4+2+2+2+2), but double check against the field list comment.
-- [~] `VitalsSample::encode` — byte ranges are off by one for every field
-      after the first (e.g. `buf[5..6]` for a `u16` should be `buf[4..6]`).
-      Each field's slice must start exactly where the previous one ended.
-- [~] `VitalsSample::decode` — slice ranges have the same off-by-one bug as
-      encode, a variable `d5` is referenced but never defined, and the
-      struct field names (`timestamp_ms`, `heart_rate_bpm`, ...) don't match
-      the placeholder names (`d1`, `d2`, ...) used in `Some(Self { ... })`.
-- [~] `AlarmEvent::ENCODED_LEN` — currently `6`; confirm against
-      4 (timestamp) + 1 (level) + 1 (source_vital) = 6. Looks right already.
-- [~] `AlarmEvent::encode` — `todo!()` makes the rest unreachable; also
-      `[0u8;Self;ENCODED_LEN]` is invalid syntax (should be `Self::ENCODED_LEN`),
-      and `buf[5].copy_from_slice(...)` is wrong — indexing a single byte
-      (`buf[5]`) gives you a `u8`, not a slice, so `copy_from_slice` won't
-      apply; a single byte field is a plain assignment instead.
-- [~] `AlarmEvent::decode` — `todo!()` blocks the draft; also references
-      undefined `d1`/`d2`/`d3` and a malformed `buf[6].try_into().ok?`
-      (missing the `()` on `ok`, and indexing one byte where a slice is
-      needed).
-- [~] `ConfigUpdate::ENCODED_LEN` — `10` is correct (5 fields × 2 bytes).
-- [~] `ConfigUpdate::encode` — `[u8; Self::ENCODED_LEN]` is invalid array
-      syntax (needs an initial value, e.g. `[0u8; Self::ENCODED_LEN]`); byte
-      ranges have the same off-by-one bug as `VitalsSample::encode`; also has
-      a stray `todo!()` after the draft body.
-- [~] `ConfigUpdate::decode` — same off-by-one slice bug, and the function
-      never returns `Some(Self { ... })` at the end — it computes `d1..d5`
-      and then falls off the end of the function.
-- [ ] `checksum` — not started. XOR `frame_type`, both length bytes, and
-      every payload byte together.
-- [ ] `encode_frame` — not started. Validate sizes, then write
-      `START_BYTE`, type, len, payload, checksum into `out` in order.
-- [ ] `decode_frame` — not started. This is the trickiest function in the
-      crate (the Incomplete/Invalid/Frame decision tree) — save it for last.
-- [ ] Test: `roundtrip_vitals_sample`
-- [ ] Test: `roundtrip_full_frame`
-- [ ] Test: `detects_corrupted_checksum`
-- [ ] Test: `incomplete_buffer_requests_more_data`
-- [ ] `cargo test -p protocol` passes clean
-
-**Definition of done:** `cargo build -p protocol` succeeds with zero errors,
-and all four tests above pass.
+- [x] `FrameType::from_u8`
+- [x] `AlarmLevel::from_u8`
+- [x] `VitalsSample::ENCODED_LEN`
+- [x] `VitalsSample::encode`
+- [x] `VitalsSample::decode`
+- [x] `AlarmEvent::ENCODED_LEN`
+- [x] `AlarmEvent::encode`
+- [x] `AlarmEvent::decode`
+- [x] `ConfigUpdate::ENCODED_LEN`
+- [x] `ConfigUpdate::encode`
+- [x] `ConfigUpdate::decode`
+- [x] `checksum`
+- [x] `encode_frame`
+- [x] `decode_frame`
+- [x] Test: `roundtrip_vitals_sample`
+- [x] Test: `roundtrip_full_frame`
+- [x] Test: `detects_corrupted_checksum`
+- [x] Test: `incomplete_buffer_requests_more_data`
+- [x] `cargo test -p protocol` passes clean
 
 ---
 
