@@ -58,41 +58,41 @@ Status legend: `[ ]` not started · `[~]` in progress / has bugs · `[x]` done
 
 **Depends on:** Milestone 1 (`EcgGenerator`) for the test.
 
-## Milestone 3 — `control-core`: alarm state machine (`alarm.rs`)
+## Milestone 3 — `control-core`: alarm state machine (`alarm.rs`) ✅ COMPLETE
 
-- [ ] `Thresholds::default()` — pick the clinically-plausible numbers from
+- [x] `Thresholds::default()` — pick the clinically-plausible numbers from
       the doc comment, remembering fixed-point scaling.
-- [ ] `VitalSource::to_wire_byte`
-- [ ] `AlarmStateMachine` struct fields (thresholds, current level/source,
+- [x] `VitalSource::to_wire_byte`
+- [x] `AlarmStateMachine` struct fields (thresholds, current level/source,
       downgrade streak counter, hysteresis window)
-- [ ] `AlarmStateMachine::new`
-- [ ] `AlarmStateMachine::set_thresholds`
-- [ ] `AlarmStateMachine::compute_level` (pure function, critical-first)
-- [ ] `AlarmStateMachine::evaluate` (immediate escalation, hysteresis on
+- [x] `AlarmStateMachine::new`
+- [x] `AlarmStateMachine::set_thresholds`
+- [x] `AlarmStateMachine::compute_level` (pure function, critical-first)
+- [x] `AlarmStateMachine::evaluate` (immediate escalation, hysteresis on
       downgrade)
-- [ ] Test: `escalates_immediately_on_critical_heart_rate`
-- [ ] Test: `does_not_downgrade_until_hysteresis_satisfied`
-- [ ] Test: `no_change_event_when_level_is_stable`
+- [x] Test: `escalates_immediately_on_critical_heart_rate`
+- [x] Test: `does_not_downgrade_until_hysteresis_satisfied`
+- [x] Test: `no_change_event_when_level_is_stable`
 
 **Depends on:** Milestone 0 (`AlarmLevel` from `protocol`).
 
-## Milestone 4 — `control-core`: IPC server (`ipc.rs`)
+## Milestone 4 — `control-core`: IPC server (`ipc.rs`) ✅ COMPLETE
 
-- [ ] `IpcServer::bind_and_serve` (remove stale socket, bind, spawn accept
+- [x] `IpcServer::bind_and_serve` (remove stale socket, bind, spawn accept
       loop thread, return `(IpcServer, Receiver<ConfigUpdate>)`)
-- [ ] `spawn_client_reader` (per-client read loop, decode frames, forward
+- [x] `spawn_client_reader` (per-client read loop, decode frames, forward
       `ConfigUpdate`s, handle Incomplete/Invalid/Frame)
-- [ ] `IpcServer::broadcast` (encode once, write to every client, drop dead
+- [x] `IpcServer::broadcast` (encode once, write to every client, drop dead
       clients via `retain_mut`)
 
 **Depends on:** Milestone 0 (`encode_frame`/`decode_frame` must work first —
 hard to debug IPC bugs on top of a broken protocol layer).
 
-## Milestone 5 — `control-core`: audit logger (`logger.rs`)
+## Milestone 5 — `control-core`: audit logger (`logger.rs`) ✅ COMPLETE
 
-- [ ] `AuditLogger` struct (`BufWriter<File>`)
-- [ ] `AuditLogger::open`
-- [ ] `AuditLogger::log` (timestamp prefix, `writeln!`, flush)
+- [x] `AuditLogger` struct (`BufWriter<File>`)
+- [x] `AuditLogger::open`
+- [x] `AuditLogger::log` (timestamp prefix, `writeln!`, flush)
 
 ## Milestone 6 — `control-core`: main loop wiring (`main.rs`)
 

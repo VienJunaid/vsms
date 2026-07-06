@@ -24,7 +24,8 @@ impl AuditLogger {
     /// HINT: `OpenOptions::new().create(true).append(true).open(path)?`
     /// gives you a File that always appends rather than overwriting.
     pub fn open(path: impl AsRef<Path>) -> std::io::Result<Self> {
-        todo!()
+        let file = OpenOptions::new().create(true).append(true).open(path.as_ref())?;
+        return Ok(Self { writer: BufWriter::new(file) });
     }
 
     /// Write one log line, prefixed with a Unix epoch millisecond timestamp.
@@ -38,6 +39,13 @@ impl AuditLogger {
     /// medical device need to do here instead, and why is "silently
     /// continue" not actually acceptable in a real system?
     pub fn log(&mut self, event: &str) {
-        todo!("format 'TIMESTAMP_MS EVENT', write it with writeln!, then flush")
+        let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis(); 
+
+        let _ = writeln!(self.writer, "{} {}", ts, event);
+
+        let _ = self.writer.flush();
     }
 }

@@ -55,7 +55,41 @@ impl IpcServer {
     ///    and the original goes into the list for writing).
     /// 5. Return `(IpcServer { clients }, rx)`.
     pub fn bind_and_serve(path: impl AsRef<Path>) -> std::io::Result<(Self, Receiver<ConfigUpdate>)> {
-        todo!()
+        // Remove the stale socket file 
+        let _ = std::fs::remove_file(path.as_ref());
+
+        // Binding the UnixListener path 
+        let listener =  UnixListener::bind(path.as_ref())?;
+
+        // create the shared client list and channel
+        let clients: ClientList = Arc::new(Mutex::new(Vec::new()));
+        
+        // tx goes to accept thread (and then each client reader)
+        // rx gets returned to the caller 
+        let (tx, rx) = channel::<ConfigUpdate>();
+
+        // Creating the accept loop thread
+        let clients_for_thread = Arc::clone(&clients);
+
+        thread::spawn(move || {
+            for stream in listener.incoming() {
+                // stream is a Result<UnixStream, _> - skip on error
+                // for each successful stream:
+                // 1. try_clone the stream (one copy for reading, one for t)
+                // 2. spawn_client_reader(read_copy, tx.clone())
+                // 3. lock clients_for_thread and push the write_copy 
+                if let Ok(stream) = stream {
+                    if let Ok(read_copy) = stream.try_clone() {
+                        spawn_client_reader(read_copy, tx.clone());
+                        clients_for_thread.lock().unwrap().push(stream);
+                    }
+                }
+            }
+        });
+
+        // Return
+        return Ok((IpcServer { clients }, rx));
+
     }
 
     /// Encode and broadcast a frame's payload to every connected client.
@@ -67,7 +101,21 @@ impl IpcServer {
     /// client (return true) if the write succeeded, drop it (return false,
     /// maybe with an eprintln! first) if it errored.
     pub fn broadcast(&self, frame_type: FrameType, payload: &[u8]) {
-        todo!()
+        let mut buf = [0u8; 256];
+
+        let Some(n) = encode_frame(frame_type, payload, &mut buf) else { return; };
+
+
+        let mut clients = self.clients.lock().unwrap(); 
+
+        // Write to each client, dropping ones that fall 
+        // retain_must iterates over the Vec and keeps only the elemnts where the closure returns true
+        clients.retain_mut(|client| {
+            client.write_all(&buf[..n]).is_ok() // slice indices are type of usize 
+        });
+
+        // write_all -> if succeeds is_ok() returns true
+        // if its errors -> returns false -> client is dropped from the list
     }
 }
 
@@ -91,6 +139,35 @@ impl IpcServer {
 ///      trying to resync.
 fn spawn_client_reader(mut stream: UnixStream, tx: Sender<ConfigUpdate>) {
     thread::spawn(move || {
-        todo!()
+        let mut buf: Vec<u8> = Vec::new();
+        
+        let mut chunk = [0u8; 512];
+        
+        loop {
+            let n = match stream.read(&mut chunk) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => n,
+            };
+            buf.extend_from_slice(&chunk[..n]);
+            // inner decode loop goes here
+            
+            loop {
+                match decode_frame(&buf) {
+                    DecodeResult::Frame { frame_type, payload, consumed } => {
+                        // If the frame type is a proper Type then continue on with the decode 
+                        if frame_type == FrameType::ConfigUpdate {
+                            // if the update is equal to the configtype decoded payload then send an error update
+                            if let Some(update) = ConfigUpdate::decode(payload) {
+                                if tx.send(update).is_err() { return; }
+                            }
+                        }
+                        buf.drain(0..consumed);
+                        // loop again - there might be another frame in the buffer 
+                    }
+                    DecodeResult::Incomplete => break, // need more bytes, go read
+                    DecodeResult::Invalid { skip } => { buf.drain(0..skip); }
+                }
+            }
+        }
     });
 }

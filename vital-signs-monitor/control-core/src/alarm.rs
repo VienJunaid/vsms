@@ -168,7 +168,7 @@ impl AlarmStateMachine {
             self.downgrade_streak = 0;
             return Some((self.current_level, self.current_source));
 
-        } else if ((computed_level as u8) < (self.current_level as u8)) {
+        } else if (computed_level as u8) < (self.current_level as u8) {
             self.downgrade_streak += 1;
             if self.downgrade_streak >= self.downgrade_hysteresis {
                 // commit to downgrade here (update level/source, reset streak)
