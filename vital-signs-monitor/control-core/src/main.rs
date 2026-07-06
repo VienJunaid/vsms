@@ -31,7 +31,11 @@ use std::time::{Duration, Instant};
 /// an `unsafe` call since it's a raw libc FFI binding. Check the return
 /// value: 0 means success, nonzero means it failed.
 fn try_set_realtime_priority() {
-    todo!()
+    let param = libc::sched_param { sched_priority: 50 };
+    let result = unsafe { libc::sched_setscheduler(0, libc::SCHED_FIFO, &param) };
+    if result != 0 {
+        eprintln!("warning: could not set real-time priority (run as root for this)");
+    }
 }
 
 fn main() -> std::io::Result<()> {
@@ -69,5 +73,78 @@ fn main() -> std::io::Result<()> {
     //      try to "catch up" if you're behind — think about why silently
     //      absorbing missed deadlines would be the wrong behavior for a
     //      real-time control loop, versus making the lateness visible.
-    todo!()
+    std::fs::create_dir_all("logs")?;
+    let (ipc_server, config_rx) = ipc::IpcServer::bind_and_serve(ipc::SOCKET_PATH)?;
+    let mut logger = AuditLogger::open("logs/audit.log")?;
+    logger.log("control-core started");
+
+    let mut rng = StdRng::seed_from_u64(42);
+    let mut ecg = EcgGenerator::new(72.0);
+    let mut spo2_gen = SpO2Generator::new(975.0);
+    let mut temp_gen = TempGenerator::new(3700.0);
+    let mut peak_detector = PeakDetector::new(0.5);
+    let mut alarms = AlarmStateMachine::new(Thresholds::default(), 5);
+
+    let mut current_spo2: u16 = 975;
+    let mut current_temp: u16 = 3700;
+    let mut sample_counter: u32 = 0;
+
+    let tick_period = Duration::from_secs_f64(1.0 / ECG_SAMPLE_RATE_HZ as f64);
+    let mut next_tick = Instant::now() + tick_period;
+    
+    // main loop
+
+    loop {
+        // Drain config updates
+        while let Ok(cfg) = config_rx.try_recv() {
+            alarms.set_thresholds(Thresholds {
+            hr_warning_low: cfg.hr_low,
+            hr_warning_high: cfg.hr_high,
+            spo2_warning_low: cfg.spo2_low_permille,
+            temp_warning_low: cfg.temp_low_centi_c,
+            temp_warning_high: cfg.temp_high_centi_c,
+            ..Thresholds::default()
+            });
+        }
+
+        // Generate ECG sample, feed the peak detector 
+        let ecg_sample = ecg.next_sample(&mut rng);
+        peak_detector.feed_sample(ecg_sample);
+        sample_counter += 1;
+
+        // Once per second, update the spO2 and Temp
+        if sample_counter >= ECG_SAMPLE_RATE_HZ {
+            current_spo2 = spo2_gen.next_value(&mut rng);
+            current_temp = temp_gen.next_value(&mut rng);
+        }
+
+        // Build and broadcast VitalsSamples
+        let hr = peak_detector.current_bpm();
+        let sample = VitalsSample {
+            timestamp_ms: 0,
+            heart_rate_bpm: hr,
+            spo2_permille: current_spo2,
+            temp_centi_c: current_temp,
+            ecg_sample_mv100: (ecg_sample * 100.0) as i16,
+        };
+        ipc_server.broadcast(FrameType::VitalsSample, &sample.encode());
+
+        // Evaluating Alarms
+        if hr > 0 {
+            if let Some((level, source)) = alarms.evaluate(hr, current_spo2, current_temp) {
+                let event = AlarmEvent { timestamp_ms: 0, level, source_vital: source.to_wire_byte() };
+                ipc_server.broadcast(FrameType::AlarmState, &event.encode());
+                logger.log(&format!("alarm transition: level={:?} source={:?}", level, source));
+            }
+        }
+
+        // Sleep until next tick
+        let now = Instant::now();
+        if now < next_tick {
+            std::thread::sleep(next_tick - now);
+        }
+        next_tick += tick_period;
+        
+
+    }
 }

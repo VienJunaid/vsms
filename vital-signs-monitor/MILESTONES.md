@@ -94,18 +94,18 @@ hard to debug IPC bugs on top of a broken protocol layer).
 - [x] `AuditLogger::open`
 - [x] `AuditLogger::log` (timestamp prefix, `writeln!`, flush)
 
-## Milestone 6 — `control-core`: main loop wiring (`main.rs`)
+## Milestone 6 — `control-core`: main loop wiring (`main.rs`) ✅ COMPLETE
 
-- [ ] `try_set_realtime_priority` (`libc::sched_setscheduler`, log failure
+- [x] `try_set_realtime_priority` (`libc::sched_setscheduler`, log failure
       instead of panicking)
-- [ ] Construct IPC server, audit logger, generators, peak detector, alarm
+- [x] Construct IPC server, audit logger, generators, peak detector, alarm
       machine
-- [ ] Drift-free tick timing (`Instant`-based "next tick" tracking, no
+- [x] Drift-free tick timing (`Instant`-based "next tick" tracking, no
       catch-up sleep)
-- [ ] Main loop: drain `ConfigUpdate`s → generate samples → feed peak
+- [x] Main loop: drain `ConfigUpdate`s → generate samples → feed peak
       detector → broadcast `VitalsSample` → evaluate alarms → broadcast
       `AlarmEvent` + log on transition → sleep to next tick
-- [ ] `cargo run -p control-core` runs without panicking and logs to
+- [x] `cargo run -p control-core` runs without panicking and logs to
       `logs/audit.log`
 
 **Depends on:** Milestones 1–5 all need to exist first — this is where they
