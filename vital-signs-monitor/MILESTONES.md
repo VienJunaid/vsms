@@ -113,13 +113,13 @@ get wired together.
 
 ---
 
-## Milestone 7 — `ui-dashboard-cli` (Qt-free terminal client)
+## Milestone 7 — `ui-dashboard-cli` (Qt-free terminal client) ✅ COMPLETE
 
-- [ ] `retry_connect` (retry loop with short sleep)
-- [ ] Main read loop (chunked reads, decode loop, drain consumed/skip bytes)
-- [ ] `handle_frame` (dispatch `VitalsSample`/`AlarmState`, print live
+- [x] `retry_connect` (retry loop with short sleep)
+- [x] Main read loop (chunked reads, decode loop, drain consumed/skip bytes)
+- [x] `handle_frame` (dispatch `VitalsSample`/`AlarmState`, print live
       readout, track current alarm level)
-- [ ] `cargo run -p ui-dashboard --bin ui-dashboard-cli` shows live data
+- [x] `cargo run -p ui-dashboard --bin ui-dashboard-cli` shows live data
       while `control-core` is running
 
 **Depends on:** Milestone 6 (needs a running `control-core` to connect to).
