@@ -8,7 +8,7 @@ mod ipc;
 mod logger;
 mod peak_detection;
 mod signals;
-
+// Dependencies
 use alarm::{AlarmStateMachine, Thresholds};
 use logger::AuditLogger;
 use peak_detection::PeakDetector;
@@ -29,7 +29,9 @@ use std::time::{Duration, Instant};
 /// `param` is a `libc::sched_param { sched_priority: 50 }` (pick a priority
 /// value — higher = more priority among other SCHED_FIFO threads). This is
 /// an `unsafe` call since it's a raw libc FFI binding. Check the return
-/// value: 0 means success, nonzero means it failed.
+/// value: 0 means success, nonzero means it failed. 
+/// Currently the main implementation of the main.rs file should be good
+/// We need to work on implementing the QML code for this project
 fn try_set_realtime_priority() {
     let param = libc::sched_param { sched_priority: 50 };
     let result = unsafe { libc::sched_setscheduler(0, libc::SCHED_FIFO, &param) };
@@ -93,7 +95,7 @@ fn main() -> std::io::Result<()> {
     let mut next_tick = Instant::now() + tick_period;
     
     // main loop
-
+ 
     loop {
         // Drain config updates
         while let Ok(cfg) = config_rx.try_recv() {
@@ -144,7 +146,6 @@ fn main() -> std::io::Result<()> {
             std::thread::sleep(next_tick - now);
         }
         next_tick += tick_period;
-        
 
     }
 }
