@@ -127,7 +127,7 @@ fn handle_frame(frame_type: FrameType, payload: &[u8], alarm_level: &mut AlarmLe
 fn retry_connect(path: &str, attempts: u32) -> std::io::Result<UnixStream> {
     let mut last_err = None;
     for attempt in 1..=attempts {
-        match UnixStream::connect(path) {
+        match std::os::unix::net::UnixStream::connect(path) {
             Ok(s) => return Ok(s),
             Err(e) => {
                 eprintln!(" attempt {}/{} failed: {}", attempt, attempts, e);

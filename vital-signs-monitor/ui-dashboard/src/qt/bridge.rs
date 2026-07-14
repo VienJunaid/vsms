@@ -30,7 +30,7 @@ pub mod qobject {
         type QString = cxx_qt_lib::QString;
     }
 
-    extern "RustQt" {
+    unsafe extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[qproperty(i32, heart_rate)]
@@ -98,7 +98,7 @@ impl qobject::Dashboard {
             hr_high: hr_high as u16,
             spo2_low_permille: spo2_low_permille as u16,
             temp_low_centi_c: temp_low_centi_c as u16,
-            temp_high_centi_c: temp_low_centi_c as u16,
+            temp_high_centi_c: temp_high_centi_c as u16,
         };
         if let Some(tx) = &self.rust().config_tx {
             let _ = tx.send(update);
@@ -141,16 +141,18 @@ impl qobject::Dashboard {
 pub fn spawn_socket_thread(qt_thread: cxx_qt::CxxQtThread<qobject::Dashboard>) {
     std::thread::spawn(move || {
         // create a stream
+        // doing the same implementation as the retry_connect() function
+        retry_connect(); 
+
         let mut stream = match retry_connect("/tmp/vital-signs-monitor.sock", 20) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("socket thread: failed to connectL {e}");
-                return; 
+                eprintln!("socket thread: failed to connect: {e}");
+                return;
             }
         };
-        
         // create an array to rate the stream 
-        let mut buf = Vec<u8> = Vec::new();
+        let mut buf: Vec<u8> = Vec::new();
         let mut chunk = [0u8; 256];
         
         // start reading the stream 
@@ -168,12 +170,28 @@ pub fn spawn_socket_thread(qt_thread: cxx_qt::CxxQtThread<qobject::Dashboard>) {
                         buf.drain(..consumed);
                     }
                     protocol::DecodeResult::Incomplete => break,
-                    protocol::DecodeResult::Invalid => { skip } => { buf.drain(..skip); }
+                    protocol::DecodeResult::Invalid { skip } => { buf.drain(..skip); }
                 }
             }
         }
         eprintln!("socket thread: disconnected.");
     });
+}
+
+// Retry_connect function
+fn retry_connect(path: &str, attempts: u32) -> std::io::Result<UnixStream> {
+    let mut last_err = None;
+    for attempt in 1..=attempts {
+        match UnixStream::connect(path) {
+            Ok(s) => return Ok(s),
+            Err(e) => {
+                eprintln!(" attempt {}/{} failed: {}", attempt, attempts, e);
+                last_err = Some(e);
+                std::thread::sleep(Duration::from_millis(250));
+            }
+        }
+    }
+    Err(last_err.unwrap())
 }
 
 fn dispatch(qt_thread: &cxx_qt::CxxQtThread<qobject::Dashboard>, frame_type:
@@ -188,8 +206,8 @@ fn dispatch(qt_thread: &cxx_qt::CxxQtThread<qobject::Dashboard>, frame_type:
                 let _ = qt_thread.queue(move |mut dashboard| {
                     dashboard.as_mut().set_heart_rate(hr);
                     dashboard.as_mut().set_spo2(spo2);
-                    dashboard.as_mute().set_temperatre(temp);
-                    dashboard.as_mute().set_ecg_sample(ecg);
+                    dashboard.as_mut().set_temperature(temp);
+                    dashboard.as_mut().set_ecg_sample(ecg);
                 });
             }
         }

@@ -129,16 +129,20 @@ get wired together.
 QML views are already complete (`qml/*.qml`) — this milestone is Rust-side
 only.
 
-- [ ] Install Qt5/Qt6 dev packages (see `ui-dashboard/README.md`)
-- [ ] `DashboardRust` struct fields (vitals, alarm level, patient id,
+- [x] Install Qt5/Qt6 dev packages (see `ui-dashboard/README.md`)
+- [x] `DashboardRust` struct fields (vitals, alarm level, patient id,
       `Option<Sender<ConfigUpdate>>`)
-- [ ] `send_config_update` (build `ConfigUpdate` from QML's `i32` args, send
+- [x] `send_config_update` (build `ConfigUpdate` from QML's `i32` args, send
       on the channel)
-- [ ] Background socket thread: connect, reuse the Milestone 7 decode loop,
+- [x] Background socket thread: connect, reuse the Milestone 7 decode loop,
       push values into `Dashboard`'s Qt properties via cxx-qt's queued
       cross-thread property update mechanism
-- [ ] `build.rs` using `cxx_qt_build::CxxQtBuilder` to register the bridge +
+- [x] `build.rs` using `cxx_qt_build::CxxQtBuilder` to register the bridge +
       QML module
+- [ ] `ui-dashboard-qt` binary entry point: second `[[bin]]` in
+      `Cargo.toml` (gated on `qt-ui`) + a `main()` that builds a
+      `QGuiApplication`/`QQmlApplicationEngine`, registers the QML module,
+      and calls `spawn_socket_thread`
 - [ ] `cargo run --features qt-ui --bin ui-dashboard-qt` renders the
       dashboard on a real Qt target with live data
 
