@@ -23,6 +23,11 @@
 //!    why this file is left for you to work through once Qt is installed
 //!    and you can iterate against real compiler errors).
 
+
+use std::os::unix::net::UnixStream;
+use std::time::Duration; 
+
+
 #[cxx_qt::bridge]
 pub mod qobject {
     unsafe extern "C++" {
@@ -52,6 +57,8 @@ pub mod qobject {
             temp_low_centi_c: i32,
             temp_high_centi_c: i32,
         );
+        #[qinvokable]
+        fn initialize(self: Pin<&mut Dashboard>);
     }
 }
 
@@ -59,7 +66,8 @@ use core::pin::Pin;
 use cxx_qt_lib::QString;
 use protocol::ConfigUpdate;
 use std::sync::mpsc::Sender;
-use std::io::Read;
+use std::io::{Read, Write};
+
 
 
 /// Backing Rust struct for the `Dashboard` QObject.
@@ -105,7 +113,15 @@ impl qobject::Dashboard {
         } else {
             eprintln!("send_config_update: background thread not running"); 
         }
+
+        
     }
+
+    fn initialize(mut self: Pin<&mut Self>) {
+            let thread = self.qt_thread();
+            let tx = spawn_socket_thread(thread);
+            self.as_mut().rust_mut().config_tx = Some(tx);
+        }
 }
 
 // TODO: the socket-reading background thread. Plan:
@@ -138,11 +154,16 @@ impl qobject::Dashboard {
 //  socket I/O there, the entire UI would freeze waiting for data (data race)
 
 
-pub fn spawn_socket_thread(qt_thread: cxx_qt::CxxQtThread<qobject::Dashboard>) {
+pub fn spawn_socket_thread(qt_thread: cxx_qt::CxxQtThread<qobject::Dashboard>) -> Sender<ConfigUpdate> {
+
+    let (tx, rx) = std::sync::mpsc::channel::<ConfigUpdate>();
+    
+
+    
     std::thread::spawn(move || {
         // create a stream
         // doing the same implementation as the retry_connect() function
-        retry_connect(); 
+        
 
         let mut stream = match retry_connect("/tmp/vital-signs-monitor.sock", 20) {
             Ok(s) => s,
@@ -154,9 +175,23 @@ pub fn spawn_socket_thread(qt_thread: cxx_qt::CxxQtThread<qobject::Dashboard>) {
         // create an array to rate the stream 
         let mut buf: Vec<u8> = Vec::new();
         let mut chunk = [0u8; 256];
-        
+        let mut out_buf = [0u8;300];
         // start reading the stream 
+    
         loop {
+            // RX drain
+            while let Ok(update) = rx.try_recv() {
+                let payload = update.encode();
+                if let Some(n) = protocol::encode_frame(
+                    protocol::FrameType::ConfigUpdate,
+                    &payload,
+                    &mut out_buf,
+                    ) {
+                        let _ = stream.write_all(&out_buf[..n]);
+                }
+            }
+
+
             let n = match stream.read(&mut chunk) {
                 Ok(0) | Err(_) => break,
                 Ok(n) => n,
@@ -176,6 +211,7 @@ pub fn spawn_socket_thread(qt_thread: cxx_qt::CxxQtThread<qobject::Dashboard>) {
         }
         eprintln!("socket thread: disconnected.");
     });
+    tx
 }
 
 // Retry_connect function
@@ -201,7 +237,7 @@ fn dispatch(qt_thread: &cxx_qt::CxxQtThread<qobject::Dashboard>, frame_type:
             if let Some(s) = protocol::VitalsSample::decode(payload) {
                 let hr = s.heart_rate_bpm as i32;
                 let spo2 = s.spo2_permille as f64 / 10.0;
-                let temp = s.temp_centic_c as f64 / 100.0;
+                let temp = s.temp_centi_c as f64 / 100.0;
                 let ecg = s.ecg_sample_mv100 as f64; 
                 let _ = qt_thread.queue(move |mut dashboard| {
                     dashboard.as_mut().set_heart_rate(hr);
