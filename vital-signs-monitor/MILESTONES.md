@@ -136,6 +136,7 @@ only.
       on the channel)
 - [x] Background socket thread: connect, reuse the Milestone 7 decode loop,
       push values into `Dashboard`'s Qt properties via cxx-qt's queued
+<<<<<<< HEAD
       cross-thread property update mechanism
 - [x] `build.rs` using `cxx_qt_build::CxxQtBuilder` to register the bridge +
       QML module
@@ -143,6 +144,16 @@ only.
       `Cargo.toml` (gated on `qt-ui`) + a `main()` that builds a
       `QGuiApplication`/`QQmlApplicationEngine`, registers the QML module,
       and calls `spawn_socket_thread`
+=======
+      cross-thread property update mechanism (`spawn_socket_thread` +
+      `dispatch` in `bridge.rs`)
+- [x] `build.rs` using `cxx_qt_build::CxxQtBuilder` to register the bridge +
+      QML module
+- [~] Remaining: add `initialize` invokable to bridge.rs, update
+      `spawn_socket_thread` to return `Sender<ConfigUpdate>` + handle writes,
+      update `main.qml` to declare Dashboard, write `src/qt/main.rs` entry
+      point, add `ui-dashboard-qt` bin to `Cargo.toml`
+>>>>>>> 6a48e9a (caro and milestone updates and stuff)
 - [ ] `cargo run --features qt-ui --bin ui-dashboard-qt` renders the
       dashboard on a real Qt target with live data
 
