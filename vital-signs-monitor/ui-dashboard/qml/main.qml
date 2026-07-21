@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-
+import VitalSigns 
 // Top-level dashboard window. Expects a `dashboard` context property exposed
 // from Rust (see ../src/qt/bridge.rs) with properties:
 //   heartRate (int), spo2 (real), temperature (real), ecgSample (real),
@@ -16,8 +16,14 @@ ApplicationWindow {
     height: 720
     title: "Vital Signs Monitor Simulator"
     color: "#0d1117"
+    
+    Dashboard {
+      id: dashboard
+      Component.onCompleted: dashboard.initialize() 
+    }
 
     ColumnLayout {
+  
         anchors.fill: parent
         anchors.margins: 16
         spacing: 12
