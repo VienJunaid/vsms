@@ -30,11 +30,6 @@ use std::time::Duration;
 
 #[cxx_qt::bridge]
 pub mod qobject {
-    unsafe extern "C++" {
-        include!("cxx-qt-lib/qstring.h");
-        type QString = cxx_qt_lib::QString;
-    }
-
     unsafe extern "RustQt" {
         #[qobject]
         #[qml_element]
@@ -43,7 +38,6 @@ pub mod qobject {
         #[qproperty(f64, temperature)]
         #[qproperty(f64, ecg_sample)]
         #[qproperty(i32, alarm_level)]
-        #[qproperty(QString, patient_id)]
         type Dashboard = super::DashboardRust;
 
         /// Invoked from QML's "Apply Thresholds" button. Should forward a
@@ -63,7 +57,6 @@ pub mod qobject {
 }
 
 use core::pin::Pin;
-use cxx_qt_lib::QString;
 use protocol::ConfigUpdate;
 use std::sync::mpsc::Sender;
 use std::io::{Read, Write};
@@ -83,7 +76,6 @@ pub struct DashboardRust {
     pub temperature: f64,
     pub ecg_sample: f64,
     pub alarm_level: i32,
-    pub patient_id: QString,
     pub config_tx: Option<Sender<ConfigUpdate>>,
 }
 

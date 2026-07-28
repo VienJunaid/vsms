@@ -61,7 +61,6 @@ ApplicationWindow {
                 SettingsPanel {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    patientId: dashboard.patientId
                     onApply: function(hrLow, hrHigh, spo2Low, tempLow, tempHigh) {
                         dashboard.sendConfigUpdate(hrLow, hrHigh, spo2Low, tempLow, tempHigh)
                     }
