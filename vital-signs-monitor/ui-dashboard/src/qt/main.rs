@@ -1,6 +1,6 @@
-// mainentry point inside src/qt/main.rs 
+mod bridge;
 
-use cxx_qt_lib::{QGuiApplication,QQmlApplicationEngine, QUrl};
+use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};
 
 fn main() {
     let mut app = QGuiApplication::new(); 
