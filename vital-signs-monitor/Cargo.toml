@@ -9,13 +9,3 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "MIT"
-
-[[bin]]
-name = "ui-dashboard"
-path = "src/qt/main.rs"
-required-features = ["qt-ui"]
-
-[[bin]]
-name = "ui-dashboard"
-path = "src/qt/main.rs"
-required-features = ["qt-ui"]
