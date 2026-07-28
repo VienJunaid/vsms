@@ -147,9 +147,8 @@ only.
 - [x] `main.qml` updated: `import VitalSigns` + `Dashboard { id: dashboard }`
       declared as direct child of `ApplicationWindow`, calls `initialize()`
       via `Component.onCompleted`
-- [~] `Cargo.toml` second `[[bin]]` for `ui-dashboard-qt` (gated on `qt-ui`)
-      — still needed
-- [ ] `src/qt/main.rs` entry point: `QGuiApplication` + `QQmlApplicationEngine`,
+- [x] `Cargo.toml` second `[[bin]]` for `ui-dashboard-qt` (gated on `qt-ui`)
+- [x] `src/qt/main.rs` entry point: `QGuiApplication` + `QQmlApplicationEngine`,
       load `qrc:/qt/qml/VitalSigns/qml/main.qml`, run event loop
 - [ ] `cargo run --features qt-ui --bin ui-dashboard-qt` renders the
       dashboard on a real Qt target with live data
