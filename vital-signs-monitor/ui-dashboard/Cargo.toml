@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [[bin]]
 name = "ui-dashboard-qt"
-path = "src/qt/main.rs"
+path = "src/qt_main.rs"
 required-features = ["qt-ui"]
 
 

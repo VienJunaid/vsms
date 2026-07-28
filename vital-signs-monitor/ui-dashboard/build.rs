@@ -6,7 +6,7 @@ fn main() {
         .qt_module("Quick")
         .qml_module(cxx_qt_build::QmlModule {
             uri: "VitalSigns",
-            rust_files: &["src/qt/bridge.rs"],
+            rust_files: &["src/bridge.rs"],
             qml_files: &[
                 "qml/main.qml",
                 "qml/AlarmBanner.qml",
