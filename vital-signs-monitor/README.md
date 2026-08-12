@@ -15,7 +15,7 @@ firmware), not a certified or clinically validated device.
 ```
 ┌─────────────────────────┐         UART/USB         ┌──────────────────────────────┐
 │      Control Core        │  ── structured frames ──▶│        UI Dashboard           │
-│  (RTIC, RP2040/STM32)    │  ◀── config/ack frames ──│  (Rust + cxx-qt + QML,        │
+│  (RTIC, RP2040/STM32)    │  ◀── config/ack frames ──│  (Rust + Slint,               │
 │                          │                           │   runs on reTerminal Linux)   │
 │  - ECG/SpO2/Temp sim     │                           │  - Live waveform              │
 │  - Peak detection (HR)   │                           │  - Vitals readout              │
@@ -47,7 +47,7 @@ risk (the touchscreen UI). This project recreates that boundary using:
 ```
 vital-signs-monitor/
 ├── control-core/      Rust firmware (RTIC), runs on RP2040 or STM32
-├── ui-dashboard/       Rust + cxx-qt + QML app, runs on the reTerminal
+├── ui-dashboard/       Rust + Slint app, runs on the reTerminal
 ├── protocol/           Shared protocol definitions (frame format, crate used by both sides)
 ├── docs/               Design notes, timing budgets, state machine diagrams
 ├── logs/                Sample/example audit-trail logs (gitignored at runtime)

@@ -1,0 +1,42 @@
+// A single big-number readout tile, e.g. "80 bpm" under a "HEART RATE" label.
+export component VitalTile inherits Rectangle {
+    in property <string> label: "";
+    in property <string> value: "--";
+    in property <string> unit: "";
+    in property <brush> accent-color: #39ff6a;
+
+    background: #0d1117;
+    border-radius: 8px;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 4px;
+
+        Text {
+            text: root.label;
+            color: #8b949e;
+            font-size: 12px;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 4px;
+
+            Text {
+                text: root.value;
+                color: root.accent-color;
+                font-size: 36px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: root.unit;
+                color: root.accent-color;
+                font-size: 16px;
+                vertical-alignment: bottom;
+            }
+        }
+    }
+}

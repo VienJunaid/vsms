@@ -1,0 +1,62 @@
+import { VitalsPanel } from "vitals_panel.slint";
+import { AlarmBanner } from "alarm_banner.slint";
+import { Waveform } from "waveform.slint";
+import { SettingsPanel } from "settings_panel.slint";
+
+// Top-level dashboard window. Rust (src/slint_main.rs) drives these `in`
+// properties from decoded VitalsSample/AlarmState frames and handles the
+// `apply-thresholds` callback by sending a ConfigUpdate frame back to
+// control-core.
+export component MainWindow inherits Window {
+    // The reTerminal's display is 1280x720 (5" touchscreen). Sized to
+    // match; adjust if you're testing on a different display.
+    width: 1280px;
+    height: 720px;
+    title: "Vital Signs Monitor Simulator";
+    background: #0d1117;
+
+    in property <string> heart-rate-text: "--";
+    in property <string> spo2-text: "0.0";
+    in property <string> temperature-text: "0.00";
+    in property <string> ecg-path: "";
+    in property <int> alarm-level: 0;
+
+    callback apply-thresholds(float, float, float, float, float);
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        AlarmBanner {
+            height: 64px;
+            level: root.alarm-level;
+        }
+
+        HorizontalLayout {
+            spacing: 16px;
+
+            Waveform {
+                horizontal-stretch: 65;
+                ecg-path: root.ecg-path;
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 35;
+                spacing: 16px;
+
+                VitalsPanel {
+                    heart-rate-text: root.heart-rate-text;
+                    spo2-text: root.spo2-text;
+                    temperature-text: root.temperature-text;
+                }
+
+                SettingsPanel {
+                    vertical-stretch: 1;
+                    apply-thresholds(hr-low, hr-high, spo2-low, temp-low, temp-high) => {
+                        root.apply-thresholds(hr-low, hr-high, spo2-low, temp-low, temp-high);
+                    }
+                }
+            }
+        }
+    }
+}

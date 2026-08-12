@@ -15,8 +15,8 @@ runs at a guaranteed cadence regardless of what the UI is doing.
 ┌────────────────────────────────────────────┐      Unix Domain Socket      ┌──────────────────────────────────────────┐
 │              control-core (process)          │  ── structured frames ──▶  │            ui-dashboard (process)          │
 │                                                │  ◀── config/ack frames ──  │                                              │
-│  - Real-time-priority thread (SCHED_FIFO)     │                             │  - cxx-qt bridges Rust <-> QML               │
-│  - ECG / SpO2 / Temp simulation                │                             │  - QML renders on reTerminal touchscreen     │
+│  - Real-time-priority thread (SCHED_FIFO)     │                             │  - Slint (pure-Rust) renders the dashboard   │
+│  - ECG / SpO2 / Temp simulation                │                             │  - Runs on reTerminal touchscreen            │
 │  - Peak detection -> heart rate                │                             │  - Live waveform, vitals, alarm banner       │
 │  - Alarm state machine (Normal/Warning/Crit)   │                             │  - Settings panel (thresholds, patient ID)   │
 │  - Audit-trail logger (timestamped, append-only)│                            │                                              │
@@ -27,7 +27,7 @@ runs at a guaranteed cadence regardless of what the UI is doing.
 
 Even on a single board, splitting into two OS processes (rather than two
 threads in one binary) buys a real property: a panic, deadlock, or
-runaway allocation in the Qt/QML event loop **cannot** take down the
+runaway allocation in the UI's event loop **cannot** take down the
 control loop's process. The control-core process keeps running and
 logging regardless of UI health. This is a deliberately chosen
 constraint, not an accident of the simpler hardware setup — it's the
@@ -71,18 +71,21 @@ transport change, not a redesign.
   and `AlarmState` frames to any connected UI client, accepts
   `ConfigUpdate` frames (alarm thresholds, patient ID) from the UI.
 
-### `ui-dashboard/` (binary, cxx-qt + QML)
-- A Rust `QObject` bridge (via `cxx-qt`) exposes live vitals, alarm state,
-  and settings as Qt properties/signals that QML binds to directly.
-- A background Rust task owns the Unix socket client, decodes frames,
-  and updates the bridge's properties — QML never touches the socket directly.
-- QML views:
-  - **Waveform.qml** — scrolling ECG trace (Canvas or a custom QML item).
-  - **VitalsPanel.qml** — HR / SpO2 / Temp numeric readouts.
-  - **AlarmBanner.qml** — color-coded banner (green/yellow/red) with audible
-    alarm hook (stretch goal).
-  - **SettingsPanel.qml** — patient ID entry, per-vital threshold sliders,
-    sends `ConfigUpdate` frames back to control-core.
+### `ui-dashboard/` (binary, [Slint](https://slint.dev))
+- A background Rust thread owns the Unix socket client, decodes frames, and
+  pushes values into the Slint window's properties via
+  `Weak::upgrade_in_event_loop` — the view never touches the socket
+  directly. Slint is pure Rust with no system Qt/C++ toolchain dependency.
+- `.slint` views (`ui-dashboard/ui/`):
+  - **waveform.slint** — scrolling ECG trace, rendered via a `Path` element
+    whose commands string is rebuilt in Rust from a ring buffer.
+  - **vitals_panel.slint** / **vital_tile.slint** — HR / SpO2 / Temp
+    numeric readouts.
+  - **alarm_banner.slint** — color-coded banner (green/yellow/red) with a
+    flashing critical state.
+  - **settings_panel.slint** / **threshold_slider.slint** — patient ID
+    entry, per-vital threshold sliders, sends `ConfigUpdate` frames back to
+    control-core.
 
 ## Timing budget (initial targets)
 

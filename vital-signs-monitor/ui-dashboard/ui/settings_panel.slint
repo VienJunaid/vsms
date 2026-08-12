@@ -1,0 +1,91 @@
+import { LineEdit, Button } from "std-widgets.slint";
+import { ThresholdSlider } from "threshold_slider.slint";
+
+// Threshold sliders + patient ID field. Fires `apply-thresholds` with the
+// five threshold values when the operator taps "Apply", which main.slint
+// wires up to a ConfigUpdate frame sent to control-core.
+export component SettingsPanel inherits Rectangle {
+    in property <string> patient-id: "";
+    callback apply-thresholds(float, float, float, float, float);
+
+    background: #11161d;
+    border-radius: 10px;
+    border-color: #262d38;
+    border-width: 1px;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 10px;
+
+        Text {
+            text: "SETTINGS";
+            color: #8b949e;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Text {
+                text: "Patient ID:";
+                color: #c9d1d9;
+                font-size: 13px;
+                vertical-alignment: center;
+            }
+            LineEdit {
+                text: root.patient-id;
+                placeholder-text: "e.g. P-00123";
+            }
+        }
+
+        hr-low-slider := ThresholdSlider {
+            label: "HR Warning Low";
+            unit: "bpm";
+            minimum: 30;
+            maximum: 80;
+            value: 50;
+        }
+        hr-high-slider := ThresholdSlider {
+            label: "HR Warning High";
+            unit: "bpm";
+            minimum: 90;
+            maximum: 180;
+            value: 110;
+        }
+        spo2-low-slider := ThresholdSlider {
+            label: "SpO2 Warning Low";
+            unit: "%";
+            minimum: 80;
+            maximum: 95;
+            value: 92;
+        }
+        temp-low-slider := ThresholdSlider {
+            label: "Temp Warning Low";
+            unit: "°C";
+            minimum: 34;
+            maximum: 37;
+            value: 36;
+        }
+        temp-high-slider := ThresholdSlider {
+            label: "Temp Warning High";
+            unit: "°C";
+            minimum: 38;
+            maximum: 41;
+            value: 38.5;
+        }
+
+        Button {
+            text: "Apply Thresholds";
+            clicked => {
+                root.apply-thresholds(
+                    Math.round(hr-low-slider.value),
+                    Math.round(hr-high-slider.value),
+                    Math.round(spo2-low-slider.value * 10),
+                    Math.round(temp-low-slider.value * 100),
+                    Math.round(temp-high-slider.value * 100),
+                );
+            }
+        }
+    }
+}

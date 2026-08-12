@@ -1,0 +1,43 @@
+import { VitalTile } from "vital_tile.slint";
+
+// Large numeric readouts for HR / SpO2 / Temp, styled like a real bedside
+// monitor's vitals tile (big number, small unit/label underneath). Values
+// arrive pre-formatted from Rust (see src/slint_main.rs) so no numeric
+// formatting logic lives here.
+export component VitalsPanel inherits Rectangle {
+    in property <string> heart-rate-text: "--";
+    in property <string> spo2-text: "0.0";
+    in property <string> temperature-text: "0.00";
+
+    background: #11161d;
+    border-radius: 10px;
+    border-color: #262d38;
+    border-width: 1px;
+    height: 220px;
+
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        VitalTile {
+            label: "HEART RATE";
+            value: root.heart-rate-text;
+            unit: "bpm";
+            accent-color: #39ff6a;
+        }
+
+        VitalTile {
+            label: "SpO2";
+            value: root.spo2-text;
+            unit: "%";
+            accent-color: #37c4ff;
+        }
+
+        VitalTile {
+            label: "TEMP";
+            value: root.temperature-text;
+            unit: "°C";
+            accent-color: #ffb84d;
+        }
+    }
+}

@@ -1,0 +1,32 @@
+import { Slider } from "std-widgets.slint";
+
+// A labeled slider with a live value readout, e.g. "HR Warning Low: 50 bpm".
+export component ThresholdSlider inherits VerticalLayout {
+    in property <string> label: "";
+    in property <string> unit: "";
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in-out property <float> value: 50;
+    spacing: 2px;
+
+    HorizontalLayout {
+        Text {
+            text: root.label;
+            color: #c9d1d9;
+            font-size: 12px;
+            horizontal-stretch: 1;
+        }
+        Text {
+            text: "\{Math.round(root.value * 10) / 10} \{root.unit}";
+            color: #39ff6a;
+            font-size: 12px;
+        }
+    }
+
+    Slider {
+        minimum: root.minimum;
+        maximum: root.maximum;
+        value: root.value;
+        changed(v) => { root.value = v; }
+    }
+}

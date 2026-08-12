@@ -2,8 +2,8 @@
 
 Tracks remaining implementation work. Update checkboxes as you complete
 items. Ordered by dependency: `protocol` blocks everything, `control-core`
-blocks `ui-dashboard`'s live data, Qt bridge is last because it needs a Qt
-toolchain.
+blocks `ui-dashboard`'s live data, the Slint UI is last because it's the
+top of the stack.
 
 Status legend: `[ ]` not started · `[~]` in progress / has bugs · `[x]` done
 
@@ -124,37 +124,29 @@ get wired together.
 
 **Depends on:** Milestone 6 (needs a running `control-core` to connect to).
 
-## Milestone 8 — `ui-dashboard-qt` (cxx-qt + QML, needs Qt installed)
+## Milestone 8 — `ui-dashboard-slint` (Slint UI) ✅ COMPLETE
 
-QML views are already complete (`qml/*.qml`) — this milestone is Rust-side
-only.
+Switched from cxx-qt + QML to [Slint](https://slint.dev) — pure Rust, no
+system Qt/C++ toolchain needed, which was the source of three separate
+build failures on the reTerminal under the old approach.
 
-- [x] Install Qt5/Qt6 dev packages (see `ui-dashboard/README.md`)
-- [x] `DashboardRust` struct fields (vitals, alarm level, patient id,
-      `Option<Sender<ConfigUpdate>>`)
-- [x] `send_config_update` (build `ConfigUpdate` from QML's `i32` args, send
-      on the channel)
-- [x] Background socket thread: connect, reuse the Milestone 7 decode loop,
-      push values into `Dashboard`'s Qt properties via cxx-qt's queued
-      cross-thread property update mechanism (`spawn_socket_thread` +
-      `dispatch` in `bridge.rs`)
-- [x] `build.rs` using `cxx_qt_build::CxxQtBuilder` to register the bridge +
-      QML module
-- [x] `initialize` invokable in `bridge.rs`: spawns socket thread, stores
-      returned `Sender<ConfigUpdate>` in `config_tx`
-- [x] `spawn_socket_thread` updated to return `Sender<ConfigUpdate>` and
-      drain rx → write `ConfigUpdate` frames back to socket
-- [x] `main.qml` updated: `import VitalSigns` + `Dashboard { id: dashboard }`
-      declared as direct child of `ApplicationWindow`, calls `initialize()`
-      via `Component.onCompleted`
-- [x] `Cargo.toml` second `[[bin]]` for `ui-dashboard-qt` (gated on `qt-ui`)
-- [x] `src/qt/main.rs` entry point: `QGuiApplication` + `QQmlApplicationEngine`,
-      load `qrc:/qt/qml/VitalSigns/qml/main.qml`, run event loop
-- [ ] `cargo run --features qt-ui --bin ui-dashboard-qt` renders the
-      dashboard on a real Qt target with live data
+- [x] `ui/*.slint` views, ported 1:1 from the old QML breakdown:
+      `alarm_banner.slint`, `vitals_panel.slint` / `vital_tile.slint`,
+      `waveform.slint`, `settings_panel.slint` / `threshold_slider.slint`,
+      `main.slint`
+- [x] `build.rs` using `slint_build::compile("ui/main.slint")`
+- [x] `src/slint_main.rs`: background socket thread reusing the Milestone 7
+      decode loop, pushes decoded values into the window via
+      `Weak::upgrade_in_event_loop` (Slint's cross-thread-safe property
+      update mechanism — the equivalent of cxx-qt's queued property setters)
+- [x] `on_apply_thresholds` callback: builds a `ConfigUpdate` from the
+      settings panel's slider values, sends on the channel
+- [x] `Cargo.toml` second `[[bin]]` for `ui-dashboard-slint` — no feature
+      gate needed, it just builds
+- [x] `cargo run --bin ui-dashboard-slint` renders the dashboard with live
+      data (verified against a running `control-core`)
 
-**Depends on:** Milestone 7 (same decode logic, reused) and a Qt-capable
-machine (e.g. the reTerminal).
+**Depends on:** Milestone 7 (same decode logic, reused).
 
 ---
 
